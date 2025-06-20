@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: secure-circle
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./Backend:/app/Backend
+      - ./python:/app/python
+      - uploads:/app/uploads
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - secure-circle-network
+
+  # Uncomment and configure if you need a database
+  # db:
+  #   image: postgres:13
+  #   container_name: secure-circle-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: user
+  #     POSTGRES_PASSWORD: password
+  #     POSTGRES_DB: securecircle
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data/
+  #   networks:
+  #     - secure-circle-network
+
+  # Uncomment if you want to use Nginx as a reverse proxy
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: secure-circle-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./certs:/etc/nginx/certs
+  #   depends_on:
+  #     - app
+  #   networks:
+  #     - secure-circle-network
+
+networks:
+  secure-circle-network:
+    driver: bridge
+
+volumes:
+  uploads:
+  # Uncomment if using PostgreSQL
+  # postgres_data:

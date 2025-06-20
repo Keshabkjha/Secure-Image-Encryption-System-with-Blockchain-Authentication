@@ -1,0 +1,65 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      # Add any required services (e.g., Redis, PostgreSQL) here
+      # redis:
+      #   image: redis
+      #   ports:
+      #     - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16.x'
+    
+    - name: Install Node.js dependencies
+      working-directory: ./Backend
+      run: npm ci
+    
+    - name: Run Python tests
+      run: |
+        # Add your Python test command here
+        # python -m pytest tests/
+    
+    - name: Run Node.js tests
+      working-directory: ./Backend
+      run: |
+        # Add your Node.js test command here
+        # npm test
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to production
+      run: |
+        # Add your deployment commands here
+        echo "Deploying to production..."
+        # Example: rsync -avz --delete ./ user@server:/path/to/deploy
