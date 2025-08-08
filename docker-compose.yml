@@ -1,42 +1,86 @@
 version: '3.8'
 
 services:
-  app:
+  # Backend API Service
+  backend:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: secure-circle
+      dockerfile: Dockerfile.backend
+    container_name: secure-image-backend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "8000:8000"
     volumes:
-      - ./Backend:/app/Backend
-      - ./python:/app/python
-      - uploads:/app/uploads
+      - ./backend:/app/backend
+      - ./secure_image_encryption:/app/secure_image_encryption
+      - ./uploads:/app/uploads
+      - ./data:/app/data
     environment:
-      - NODE_ENV=production
-      - PORT=3000
+      - NODE_ENV=development
+      - PORT=8000
+      - HEDERA_NETWORK=testnet
+      - LOG_LEVEL=INFO
+    env_file:
+      - .env
     networks:
-      - secure-circle-network
+      - secure-network
+    depends_on:
+      - redis
+      - db
 
-  # Uncomment and configure if you need a database
-  # db:
-  #   image: postgres:13
-  #   container_name: secure-circle-db
+  # Redis for caching and message brokering
+  redis:
+    image: redis:7-alpine
+    container_name: secure-image-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - secure-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: secure-image-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-secure_image}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - secure-network
+
+  # Frontend Service (if you have a frontend)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: secure-image-frontend
   #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_USER: user
-  #     POSTGRES_PASSWORD: password
-  #     POSTGRES_DB: securecircle
+  #   ports:
+  #     - "3000:3000"
   #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data/
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   environment:
+  #     - NODE_ENV=development
+  #     - REACT_APP_API_URL=http://localhost:8000
   #   networks:
-  #     - secure-circle-network
+  #     - secure-network
+  #   depends_on:
+  #     - backend
 
-  # Uncomment if you want to use Nginx as a reverse proxy
+  # Nginx Reverse Proxy (optional)
   # nginx:
   #   image: nginx:alpine
-  #   container_name: secure-circle-nginx
+  #   container_name: secure-image-nginx
   #   restart: unless-stopped
   #   ports:
   #     - "80:80"
@@ -44,16 +88,48 @@ services:
   #   volumes:
   #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
   #     - ./certs:/etc/nginx/certs
+  #     - ./frontend/build:/usr/share/nginx/html
   #   depends_on:
-  #     - app
+  #     - backend
+  #     - frontend
   #   networks:
-  #     - secure-circle-network
+  #     - secure-network
 
-networks:
-  secure-circle-network:
-    driver: bridge
+  # Monitoring with Prometheus and Grafana (optional)
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./monitoring/prometheus:/etc/prometheus
+  #     - prometheus_data:/prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #   networks:
+  #     - secure-network
 
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: grafana
+  #   ports:
+  #     - "3001:3000"
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #   depends_on:
+  #     - prometheus
+  #   networks:
+  #     - secure-network
+
+# Volumes for persistent data
 volumes:
+  postgres_data:
+  redis_data:
+  # prometheus_data:
+  # grafana_data:
   uploads:
-  # Uncomment if using PostgreSQL
-  # postgres_data:
+    driver: local
+  # prometheus_data:
+  # grafana_data:
